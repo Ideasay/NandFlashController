@@ -32,30 +32,52 @@ module tb_NFC_Physical_Top;
     reg                           iSystemClock            ; // SDR 100MHz
     reg                           iDelayRefClock          ; // SDR 200Mhz
     reg                           iSystemClock_120         ;
+    reg                     [7:0] step;
     // glbl glbl();
     // 100 MHz
     initial                 
     begin
         iSystemClock     <= 1'b0;
-        iSystemClock_120  <= 1'b0;
+        //iSystemClock_120  <= 1'b0;
         #10000;
         forever
         begin    
             iSystemClock <= 1'b1;
+            //iSystemClock_120 <= 1'b1;
+            #1500;
+            iSystemClock <= 1'b1;
+            //iSystemClock_120 <= 1'b1;
+            #1000;
+            iSystemClock <= 1'b0;
+            //iSystemClock_120 <= 1'b1;
+            #1500;
+            iSystemClock <= 1'b0;
+            //iSystemClock_120 <= 1'b1;
+            #1000;
+        end
+    end
+    
+    initial                 
+    begin
+        //iSystemClock     <= 1'b0;
+        iSystemClock_120  <= 1'b0;
+        #10000;
+        forever
+        begin    
+            //iSystemClock <= 1'b1;
+            iSystemClock_120 <= 1'b1;
+            #3000;
+            //iSystemClock <= 1'b1;
+            iSystemClock_120 <= 1'b0;
+            #2000;
+            //iSystemClock <= 1'b0;
             iSystemClock_120 <= 1'b0;
             #3000;
-            iSystemClock <= 1'b1;
-            iSystemClock_120 <= 1'b1;
-            #2000;
-            iSystemClock <= 1'b0;
-            iSystemClock_120 <= 1'b1;
-            #3000;
-            iSystemClock <= 1'b0;
+            //iSystemClock <= 1'b0;
             iSystemClock_120 <= 1'b0;
             #2000;
         end
     end
-
     // 200 MHz
     initial                 
     begin
@@ -244,12 +266,14 @@ endtask
 task reset_ffh;
     begin
     // Async
-    // enable CE
-    PM_signal(0, 0, 0, 0, 0, 0, 1, 1, 8'h00, 32'h0000, 4'b0001, 4'b0011, 4'b0000, 4'b0000, 4'b0000);
+    // enable CE    *****************
+    PM_signal(0, 0, 0, 0, 0, 0, 0, 0, 8'h00, 32'h0000, 4'b0000, 4'b0011, 4'b0011, 4'b0000, 4'b0011);
     // cmd
-    PM_signal(0, 0, 0, 0, 0, 0, 1, 1, 8'h00, 32'hffff, 4'b0001, 4'b0011, 4'b0001, 4'b0000, 4'b0011);
+    PM_signal(0, 0, 0, 0, 0, 0, 0, 0, 8'h00, 32'hffff, 4'b0000, 4'b0011, 4'b0011, 4'b0000, 4'b0011);
     // idle
-    PM_signal(0, 0, 0, 0, 0, 0, 1, 1, 8'h00, 32'h0000, 4'b0001, 4'b0011, 4'b0000, 4'b0000, 4'b0000);
+    PM_signal(0, 0, 0, 0, 0, 0, 0, 0, 8'h00, 32'h0000, 4'b0000, 4'b0011, 4'b0000, 4'b0000, 4'b0000);
+    //setp6
+    step <= 6; 
     wait(oPHY_ACG_ReadyBusy[0] == 0);
     wait(oPHY_ACG_ReadyBusy[0] == 1);
     end
@@ -436,23 +460,31 @@ endtask
         iACG_PHY_PinIn_Reset      <= 1;
         iACG_PHY_PinIn_BUFF_Reset <= 1;
         iACG_PHY_PinOut_Reset     <= 1;
-        PM_signal(0, 0, 0, 1, 0, 0, 1, 1, 8'h00, 32'h0000, 4'b0000, 4'b0011, 4'b0000, 4'b0000, 4'b0000);
+        //step1
+        step <= 1;
+        PM_signal(0, 0, 0, 1, 0, 0, 0, 0, 8'h00, 32'h0000, 4'b0011, 4'b0011, 4'b0011, 4'b0000, 4'b0000);
+        //step2
+        step <= 2;
         for (I = 0; I < 10; I = I + 1)
             @(posedge iSystemClock);
         iACG_PHY_PinIn_Reset      <= 0;
         iACG_PHY_PinIn_BUFF_Reset <= 0;
         iACG_PHY_PinOut_Reset     <= 0;
+        //step3
+        step <= 3;
         # 1000000
         for (I = 0; I < 10; I = I + 1)
             @(posedge iSystemClock);
-        
-        PM_signal(0, 0, 0, 0, 1,20, 1, 1, 8'h00, 32'h0000, 4'b0000, 4'b0011, 4'b0000, 4'b0000, 4'b0000);
+        //step4
+        step <= 4; 
+        PM_signal(0, 0, 0, 0, 1,20, 0, 0, 8'h00, 32'h0000, 4'b0011, 4'b0011, 4'b0000, 4'b0000, 4'b0000);
+        step <= 5;
 
         reset_ffh;
         setfeature_efh;
-        getfeature_eeh;
-        progpage_80h_10h;
-        readpage_00h_30h;
+        //getfeature_eeh;
+       // progpage_80h_10h;
+       // readpage_00h_30h;
         // eraseblock_60h_d0h;
         // readpage_00h_30h;
         repeat (50) @(posedge iSystemClock);

@@ -44,16 +44,16 @@ module tb_NFC_Physical_Top;
         begin    
             iSystemClock <= 1'b1;
             //iSystemClock_120 <= 1'b1;
-            #1500;
+            #3000;
             iSystemClock <= 1'b1;
             //iSystemClock_120 <= 1'b1;
-            #1000;
+            #2000;
             iSystemClock <= 1'b0;
             //iSystemClock_120 <= 1'b1;
-            #1500;
+            #3000;
             iSystemClock <= 1'b0;
             //iSystemClock_120 <= 1'b1;
-            #1000;
+            #2000;
         end
     end
     
@@ -74,7 +74,7 @@ module tb_NFC_Physical_Top;
             iSystemClock_120 <= 1'b0;
             #3000;
             //iSystemClock <= 1'b0;
-            iSystemClock_120 <= 1'b0;
+            iSystemClock_120 <= 1'b1;
             #2000;
         end
     end
@@ -267,13 +267,14 @@ task reset_ffh;
     begin
     // Async
     // enable CE    *****************
-    PM_signal(0, 0, 0, 0, 0, 0, 0, 0, 8'h00, 32'h0000, 4'b0000, 4'b0011, 4'b0011, 4'b0000, 4'b0011);
+    PM_signal(0, 0, 0, 0, 0, 0, 0, 0, 8'h00, 32'h0000, 4'b0000, 4'b0011, 4'b0000, 4'b0000, 4'b0011);
     // cmd
+    step <= 6;
     PM_signal(0, 0, 0, 0, 0, 0, 0, 0, 8'h00, 32'hffff, 4'b0000, 4'b0011, 4'b0011, 4'b0000, 4'b0011);
     // idle
-    PM_signal(0, 0, 0, 0, 0, 0, 0, 0, 8'h00, 32'h0000, 4'b0000, 4'b0011, 4'b0000, 4'b0000, 4'b0000);
+    PM_signal(0, 0, 0, 0, 0, 0, 0, 0, 8'h00, 32'h0000, 4'b0000, 4'b0011, 4'b0011, 4'b0000, 4'b0000);
     //setp6
-    step <= 6; 
+    step <= 7; 
     wait(oPHY_ACG_ReadyBusy[0] == 0);
     wait(oPHY_ACG_ReadyBusy[0] == 1);
     end
@@ -477,7 +478,7 @@ endtask
             @(posedge iSystemClock);
         //step4
         step <= 4; 
-        PM_signal(0, 0, 0, 0, 1,20, 0, 0, 8'h00, 32'h0000, 4'b0011, 4'b0011, 4'b0000, 4'b0000, 4'b0000);
+        PM_signal(0, 0, 0, 0, 1,20, 0, 0, 8'h00, 32'h0000, 4'b0011, 4'b0011, 4'b0011, 4'b0000, 4'b0000);
         step <= 5;
 
         reset_ffh;

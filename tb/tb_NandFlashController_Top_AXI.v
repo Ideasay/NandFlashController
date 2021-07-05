@@ -441,6 +441,8 @@ module tb_NandFlashController_Top_AXI;
     endtask
 
 	reg [31:0] status;
+	//modif zyb
+	reg [31:0] status_rb;
 
     task reset_ffh;
         begin
@@ -552,9 +554,9 @@ module tb_NandFlashController_Top_AXI;
     	input check;
     	integer base_adr;
         begin
-        base_adr = global_row[7]*6 + global_row[2:0];
+        base_adr = global_row[7]*2 + global_row[2:0];
         AXIL32_OUT(`rLength, {16'd0, number});
-        AXIL32_OUT(`rDMAWAddress, base_adr*PageSize+12*PageSize); //DMA addr
+        AXIL32_OUT(`rDMAWAddress, base_adr*PageSize+4*PageSize); //DMA addr
         AXIL32_OUT(`rCommand, {11'd0, 5'b00000, 10'd0, 6'b000100});
         AXIL32_IN(`rNFCStatus, status);
         @(posedge s_axil_clk);
@@ -573,6 +575,7 @@ module tb_NandFlashController_Top_AXI;
     task eraseblock_60h_d0h;
         begin
         AXIL32_OUT(`rCommand, {11'd0, 5'b00000, 10'd0, 6'b000110});
+        //modif zyb
         AXIL32_IN(`rNFCStatus, status);
         @(posedge s_axil_clk);
         while(status[0] == 0) begin
@@ -589,6 +592,9 @@ module tb_NandFlashController_Top_AXI;
     task eraseblock_60h_d1h_multiplane;
         begin
         AXIL32_OUT(`rCommand, {11'd0, 5'b00010, 10'd0, 6'b000110});
+        //modif zyb
+           // wait(I_NAND_RB[0] == 0);
+          //  wait(I_NAND_RB[0] == 1);
         AXIL32_IN(`rNFCStatus, status);
         @(posedge s_axil_clk);
         while(status[0] == 0) begin
@@ -660,10 +666,11 @@ module tb_NandFlashController_Top_AXI;
             while (RDY == 0) begin
                 readstatus_70h;
             end
-            base_adr = global_row[7]*6 + global_row[2:0];
+            base_adr = global_row[7]*2 + global_row[2:0];
             AXIL32_OUT(`rDMARAddress, base_adr*PageSize);
             progpage_80h_10h_multplane(PageSize);
-
+            wait(I_NAND_RB[0] == 0);
+            wait(I_NAND_RB[0] == 1);
 
             // plane1 page0
             set_rowaddr({{5'd0},{rblock},page});
@@ -671,11 +678,11 @@ module tb_NandFlashController_Top_AXI;
             while (RDY == 0) begin
                 readstatus_70h;
             end
-            base_adr = global_row[7]*6 + global_row[2:0];
+            base_adr = global_row[7]*2 + global_row[2:0];
             AXIL32_OUT(`rDMARAddress, base_adr*PageSize);
             progpage_80h_15h_cache(PageSize);
-
-
+            wait(I_NAND_RB[0] == 0);
+            wait(I_NAND_RB[0] == 1);
             // plane0 page1 cache
             
             set_rowaddr({{5'd0},{block},{rpage}});
@@ -683,10 +690,11 @@ module tb_NandFlashController_Top_AXI;
             while (RDY == 0) begin
                 readstatus_70h;
             end
-            base_adr = global_row[7]*6 + global_row[2:0];
+            base_adr = global_row[7]*2 + global_row[2:0];
             AXIL32_OUT(`rDMARAddress, base_adr*PageSize);
             progpage_80h_10h_multplane(PageSize);
-
+            wait(I_NAND_RB[0] == 0);
+            wait(I_NAND_RB[0] == 1);
 
             // plane1 page1 cache
             set_rowaddr({{5'd0},{rblock},{rpage}});
@@ -694,21 +702,36 @@ module tb_NandFlashController_Top_AXI;
             while (RDY == 0) begin
                 readstatus_70h;
             end
-            base_adr = global_row[7]*6 + global_row[2:0];
+            base_adr = global_row[7]*2 + global_row[2:0];
             AXIL32_OUT(`rDMARAddress, base_adr*PageSize);
-            if (finished)
+            if (finished)begin
                 progpage_80h_10h(PageSize);
-            else
+            wait(I_NAND_RB[0] == 0);
+            wait(I_NAND_RB[0] == 1);
+                end
+            else begin
                 progpage_80h_15h_cache(PageSize);
-
+            wait(I_NAND_RB[0] == 0);
+            wait(I_NAND_RB[0] == 1);
+                end
         end
     endtask
 
     integer seed;
+    //modif zyb
+    integer base_adr;
 
     initial  begin seed =  0; end
 
 	integer i, j;
+	//modif zyb
+	        integer count;
+//modif zyb
+/*initial 
+begin
+            AXIL32_IN(`rNFCStatus, status_rb);
+end
+*/
 
     initial
         begin
@@ -720,8 +743,8 @@ module tb_NandFlashController_Top_AXI;
 		AXIL32_WriteChannel(   0, 3'd0, 0, 0, 4'hf, 0, 0);
 
 	    for (i = 0; i < 2**14; i = i + 1) begin
-	    	if (i < (PageSize/8*12)) begin
-	    		axi_ram.mem[i] =  {$random(seed),$random(seed)};
+	    	if (i < (PageSize/8*4)) begin
+	    		axi_ram.mem[i] =  64'h0123456789ABCDEF;
 	    	end else begin
 	    		axi_ram.mem[i] =  0;
 	    	end
@@ -735,10 +758,23 @@ module tb_NandFlashController_Top_AXI;
         reset_ffh;
         set_feature(32'h15000000);
         setfeature_efh;
+        set_rowaddr({{5'd0},{11'd0},{7'd0}});
+         //modif zyb
+       /* readstatus_70h;
+        while (RDY == 0) begin
+           readstatus_70h;
+       end
+         base_adr = global_row[7]*6 + global_row[2:0];
+         AXIL32_OUT(`rDMARAddress, base_adr*PageSize);
+         progpage_80h_10h(PageSize);
+#560000000;
+        set_rowaddr({{5'd0},{11'd0},{7'd0}});
+        readpage_00h_30h(PageSize,1);*/
+       
         program_multiplane_cache(11'd0, 7'd0, 0);
-        program_multiplane_cache(11'd0, 7'd2, 0);
-        program_multiplane_cache(11'd0, 7'd4, 1);
-
+        //program_multiplane_cache(11'd0, 7'd2, 1);
+        //program_multiplane_cache(11'd0, 7'd4, 1);
+        //zheng
         readstatus_70h;
         while (ARDY == 0) begin
             readstatus_70h;
@@ -748,39 +784,44 @@ module tb_NandFlashController_Top_AXI;
         readpage_00h_30h(PageSize,1);
         set_rowaddr({{5'd0},{11'd0},{7'd1}});
         readpage_00h_30h(PageSize,1);
+        /*zheng
         set_rowaddr({{5'd0},{11'd0},{7'd2}});
         readpage_00h_30h(PageSize,1);
         set_rowaddr({{5'd0},{11'd0},{7'd3}});
         readpage_00h_30h(PageSize,1);
+        
         set_rowaddr({{5'd0},{11'd0},{7'd4}});
         readpage_00h_30h(PageSize,1);
         set_rowaddr({{5'd0},{11'd0},{7'd5}});
-        readpage_00h_30h(PageSize,1);
+        readpage_00h_30h(PageSize,1);*/
 
 
         set_rowaddr({{5'd0},{11'd1},{7'd0}});
         readpage_00h_30h(PageSize,1);
         set_rowaddr({{5'd0},{11'd1},{7'd1}});
         readpage_00h_30h(PageSize,1);
+        /*zheng
         set_rowaddr({{5'd0},{11'd1},{7'd2}});
         readpage_00h_30h(PageSize,1);
         set_rowaddr({{5'd0},{11'd1},{7'd3}});
         readpage_00h_30h(PageSize,1);
+        
         set_rowaddr({{5'd0},{11'd1},{7'd4}});
         readpage_00h_30h(PageSize,1);
         set_rowaddr({{5'd0},{11'd1},{7'd5}});
-        readpage_00h_30h(PageSize,1);
+        readpage_00h_30h(PageSize,1);*/
 
         repeat (100) @(posedge s_axil_clk);
+        count <= 0;
 
-        for (i = 0; i < (PageSize/8*12); i=i+1) begin
-        	
-        	if (axi_ram.mem[i] != axi_ram.mem[i+(PageSize/8*12)]) begin
+        for (i = 0; i < (PageSize/8*4); i=i+1) begin
+        	if (axi_ram.mem[i] != axi_ram.mem[i+(PageSize/8*4)]) begin
         		$display("test wrong!");
-        		$display("data %d %016x %016x",i, axi_ram.mem[i],axi_ram.mem[i+(PageSize/8*12)]);
-        		$stop;
+        		$display("data %d %016x %016x",i, axi_ram.mem[i],axi_ram.mem[i+(PageSize/8*4)]);
+        		count <= count +1;
+        		//$stop;
         	end else if (i<10) begin
-        		$display("data %d %016x %016x",i, axi_ram.mem[i],axi_ram.mem[i+(PageSize/8*12)]);
+        		$display("data %d %016x %016x",i, axi_ram.mem[i],axi_ram.mem[i+(PageSize/8*4)]);
         	end
         end
 
@@ -788,7 +829,13 @@ module tb_NandFlashController_Top_AXI;
 
         set_rowaddr({{5'd0},{11'd0},{7'd0}});
         eraseblock_60h_d1h_multiplane;
+        //modif zyb
+          wait(I_NAND_RB[0] == 0);
+        count <= 0;
+          wait(I_NAND_RB[0] == 1);
+        count <= 1;
         set_rowaddr({{5'd0},{11'd1},{7'd0}});
+        
         readstatus_78h;
         AXIL32_IN(`rNFCStatus, status);
         while (ARDY == 0) begin
@@ -797,6 +844,11 @@ module tb_NandFlashController_Top_AXI;
         end
 
         eraseblock_60h_d0h;
+        //modif zyb
+                  wait(I_NAND_RB[0] == 0);
+        count <= 0;
+          wait(I_NAND_RB[0] == 1);
+        count <= 1;
         readstatus_78h;
         AXIL32_IN(`rNFCStatus, status);
         while (ARDY == 0) begin
@@ -808,6 +860,7 @@ module tb_NandFlashController_Top_AXI;
         readpage_00h_30h(PageSize,0);
         set_rowaddr({{5'd0},{11'd0},{7'd1}});
         readpage_00h_30h(PageSize,0);
+        /* zheng
         set_rowaddr({{5'd0},{11'd0},{7'd2}});
         readpage_00h_30h(PageSize,0);
         set_rowaddr({{5'd0},{11'd0},{7'd3}});
@@ -815,13 +868,14 @@ module tb_NandFlashController_Top_AXI;
         set_rowaddr({{5'd0},{11'd0},{7'd4}});
         readpage_00h_30h(PageSize,0);
         set_rowaddr({{5'd0},{11'd0},{7'd5}});
-        readpage_00h_30h(PageSize,0);
+        readpage_00h_30h(PageSize,0);*/
 
 
         set_rowaddr({{5'd0},{11'd1},{7'd0}});
         readpage_00h_30h(PageSize,0);
         set_rowaddr({{5'd0},{11'd1},{7'd1}});
         readpage_00h_30h(PageSize,0);
+        /*zheng
         set_rowaddr({{5'd0},{11'd1},{7'd2}});
         readpage_00h_30h(PageSize,0);
         set_rowaddr({{5'd0},{11'd1},{7'd3}});
@@ -829,7 +883,7 @@ module tb_NandFlashController_Top_AXI;
         set_rowaddr({{5'd0},{11'd1},{7'd4}});
         readpage_00h_30h(PageSize,0);
         set_rowaddr({{5'd0},{11'd1},{7'd5}});
-        readpage_00h_30h(PageSize,0);
+        readpage_00h_30h(PageSize,0);*/
 
 
         $display("test finished!");
